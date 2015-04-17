@@ -1,0 +1,30 @@
+<script src="../build/SoundOnDemand.js"></script>
+
+<script>
+
+var audio = new SoundOnDemand();
+
+var sound = audio.channel("sound");
+
+//var s = sound.play("music").rate(0.3).loop();
+
+// sound.alias("explosion2", "explosion", rate, volume)
+
+audio.alias("keyboard2", "keyboard", 2.5, 1.0);
+
+document.addEventListener("keydown", function() {
+  
+  // if(s.paused) s.resume(); else s.pause();
+
+  sound.play("keyboard2").pan(0).rate(0.5);
+  
+
+});
+
+setInterval(function() {
+  
+  audio.step(1/60);
+
+}, 1000/60);
+
+</script>

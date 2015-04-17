@@ -1,0 +1,39 @@
+
+
+
+
+
+                          | source1 (sound)
+output < - compresor < - < 
+                          | source2 (music)
+
+            main | 0 | 1 | 2 | 3 | 4
+
+
+(fx)
+
+var soundEngine = new SoundOnDemand();
+
+app.sound = soundEngine.addChannel();
+
+app.sound.fx()
+app.sound.reverb.value(32);
+app.sound.reverb.value(32);
+
+app.sound.delay
+
+app.sound.channel("music").play("explosion").rate().loop().
+app.sound.channel("music").play("explosion").rate(0.5).loop().alias();
+app.sound.channel("music").play("explosion").rate(0.5).loop().alias();
+
+app.sound.channel("");
+app.sound.music();
+app.sound.alias("explosion", "explosion")
+
+app.music
+app.sound
+
+app.sound.channel();
+
+app.sound.reverb(0.5);
+app.sound.music(0.5);
