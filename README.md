@@ -4,7 +4,7 @@ Game oriented sound library using WebAudioAPI. Probably won't get along with mob
 
 Comes in vanilla and playground.js flavor.
 
-Killer features: 
+Core features: 
 
 * Sounds don't have to be preloaded hence the Sound On Demand.
 * Engine can be divided to separate channels (for music, gui, environment...)
@@ -56,3 +56,7 @@ audio.alias("explosion2", "explosion", rate, volume);
 
 sound.play("explosion2");
 ```
+
+## Documentation
+
+Read [full documentation](http://playgroundjs.com/libs/sound-on-demand)
