@@ -10,8 +10,7 @@ Killer features:
 * Engine can be divided to separate channels (for music, gui, environment...)
 * Each channel can be armed with convolver (for reverb or environmental effects)
 
-
-## Example
+## Examples
 
 Initialization:
 
