@@ -21,10 +21,6 @@ PLAYGROUND.SoundOnDemand = function(app) {
 
   };
 
-  app.on("step", function(delta) {
-    app.audio.step(delta);
-  });
-
 };
 
 PLAYGROUND.SoundOnDemand.plugin = true;

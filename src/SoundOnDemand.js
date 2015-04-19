@@ -39,6 +39,19 @@ SoundOnDemand = function(options) {
   this.channels = {};
   this.aliases = {};
 
+  var lastTick = Date.now();
+  var engine = this;
+
+  setInterval(function() {
+
+    var delta = (lastTick - Date.now()) / 1000;
+    
+    lastTick = Date.now();
+
+    engine.step(delta);
+
+  });
+
 };
 
 SoundOnDemand.moveTo = function(value, target, step) {
@@ -163,7 +176,7 @@ SoundOnDemand.prototype = {
   },
 
   alias: function(name, source, rate, volume) {
-    
+
     this.aliases[name] = {
       source: source,
       rate: rate,
