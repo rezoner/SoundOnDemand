@@ -50,7 +50,7 @@ SoundOnDemand = function(options) {
 
     engine.step(delta);
 
-  });
+  }, 1000 / 60);
 
 };
 
