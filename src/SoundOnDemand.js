@@ -3,7 +3,29 @@
 /* output: output node, default */
 /* audioContext: audioContext */
 
-SoundOnDemand = function(options) {
+if (!window.AudioContext) {
+
+  window.AudioContext = window.webkitAudioContext;
+
+  if (!window.AudioContext.prototype.createStereoPanner) {
+
+    window.AudioContext.prototype.createStereoPanner = function() {
+
+      var node = this.createGain();
+
+      node.pan = {
+        value: 0
+      };
+
+      return node;
+
+    }
+
+  }
+
+}
+
+window.SoundOnDemand = function(options) {
 
   options = options || {};
 
@@ -44,13 +66,13 @@ SoundOnDemand = function(options) {
 
   setInterval(function() {
 
-    var delta = (lastTick - Date.now()) / 1000;
-    
+    var delta = (Date.now() - lastTick) / 1000;
+
     lastTick = Date.now();
 
     engine.step(delta);
 
-  }, 1000 / 60);
+  }, 1000 / 30);
 
 };
 
@@ -103,9 +125,21 @@ SoundOnDemand.prototype = {
       basename += "." + defaultExtension;
     }
 
+    var url;
+
+    if (app && app.rewriteURL) {
+
+      url = app.rewriteURL(this.path + basename);
+
+    } else {
+
+      url = this.path + basename;
+
+    }
+
     return {
       key: key,
-      url: this.path + basename,
+      url: url,
       path: this.path + path,
       ext: ext
     };

@@ -27,40 +27,6 @@ SoundOnDemand.Channel.prototype = {
 
   constructor: SoundOnDemand.Channel,
 
-  /* get a sound for further usage */
-
-  xroute: function() {
-
-    if (this.currentRoute) {
-
-      for (var i = 0; i < this.currentRoute.length - 1; i++) {
-
-        this.currentRoute[i].disconnect();
-
-      }
-
-    }
-
-    this.currentRoute = [];
-
-    for (var i = 0; i < arguments.length; i++) {
-
-      if (i < arguments.length - 1) {
-
-        var node = arguments[i];
-
-        node.connect(arguments[i + 1]);
-
-      }
-
-      this.currentRoute.push(node);
-
-    }
-
-    this.input = arguments[0];
-
-  },
-
   get: function(key) {
 
     return new SoundOnDemand.Sound(key, this);
@@ -68,6 +34,8 @@ SoundOnDemand.Channel.prototype = {
   },
 
   play: function(key) {
+
+    if (this.mutedWith) key = this.mutedWith;
 
     var sound = this.get(key);
 
@@ -109,9 +77,15 @@ SoundOnDemand.Channel.prototype = {
 
   },
 
+  muteWith: function(key) {
+
+    this.mutedWith = key;
+
+  },
+
   volume: function(value) {
 
-    this.gainNode.value = value;
+    this.gainNode.gain.value = value;
 
     return this;
 

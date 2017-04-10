@@ -13,7 +13,29 @@
 /* output: output node, default */
 /* audioContext: audioContext */
 
-SoundOnDemand = function(options) {
+if (!window.AudioContext) {
+
+  window.AudioContext = window.webkitAudioContext;
+
+  if (!window.AudioContext.prototype.createStereoPanner) {
+
+    window.AudioContext.prototype.createStereoPanner = function() {
+
+      var node = this.createGain();
+
+      node.pan = {
+        value: 0
+      };
+
+      return node;
+
+    }
+
+  }
+
+}
+
+window.SoundOnDemand = function(options) {
 
   options = options || {};
 
@@ -54,13 +76,13 @@ SoundOnDemand = function(options) {
 
   setInterval(function() {
 
-    var delta = (lastTick - Date.now()) / 1000;
-    
+    var delta = (Date.now() - lastTick) / 1000;
+
     lastTick = Date.now();
 
     engine.step(delta);
 
-  }, 1000 / 60);
+  }, 1000 / 30);
 
 };
 
@@ -113,9 +135,21 @@ SoundOnDemand.prototype = {
       basename += "." + defaultExtension;
     }
 
+    var url;
+
+    if (app && app.rewriteURL) {
+
+      url = app.rewriteURL(this.path + basename);
+
+    } else {
+
+      url = this.path + basename;
+
+    }
+
     return {
       key: key,
-      url: this.path + basename,
+      url: url,
       path: this.path + path,
       ext: ext
     };
@@ -300,40 +334,6 @@ SoundOnDemand.Channel.prototype = {
 
   constructor: SoundOnDemand.Channel,
 
-  /* get a sound for further usage */
-
-  xroute: function() {
-
-    if (this.currentRoute) {
-
-      for (var i = 0; i < this.currentRoute.length - 1; i++) {
-
-        this.currentRoute[i].disconnect();
-
-      }
-
-    }
-
-    this.currentRoute = [];
-
-    for (var i = 0; i < arguments.length; i++) {
-
-      if (i < arguments.length - 1) {
-
-        var node = arguments[i];
-
-        node.connect(arguments[i + 1]);
-
-      }
-
-      this.currentRoute.push(node);
-
-    }
-
-    this.input = arguments[0];
-
-  },
-
   get: function(key) {
 
     return new SoundOnDemand.Sound(key, this);
@@ -341,6 +341,8 @@ SoundOnDemand.Channel.prototype = {
   },
 
   play: function(key) {
+
+    if (this.mutedWith) key = this.mutedWith;
 
     var sound = this.get(key);
 
@@ -382,9 +384,15 @@ SoundOnDemand.Channel.prototype = {
 
   },
 
+  muteWith: function(key) {
+
+    this.mutedWith = key;
+
+  },
+
   volume: function(value) {
 
-    this.gainNode.value = value;
+    this.gainNode.gain.value = value;
 
     return this;
 
@@ -487,6 +495,7 @@ SoundOnDemand.Sound = function(key, channel) {
 
   this.key = key;
   this.bufferKey = key;
+  this.delayTimeout = 0;
 
   if (channel.engine.aliases[key]) {
 
@@ -549,6 +558,20 @@ SoundOnDemand.Sound.prototype = {
 
   },
 
+  volumef: function(volume) {
+
+    return this.volume(this.current.volume * volume);
+
+  },
+
+  delay: function(time) {
+
+    this.delayTimeout = time;
+
+    return this;
+
+  },
+
   updateVolume: function() {
 
     this.gainNode.gain.value = this.current.volume * this.fadeMod;
@@ -556,6 +579,9 @@ SoundOnDemand.Sound.prototype = {
   },
 
   pan: function(pan) {
+
+    if (pan < -1.0) pan = -1.0;
+    if (pan > 1.0) pan = 1.0;
 
     this.current.pan = pan;
 
@@ -580,6 +606,12 @@ SoundOnDemand.Sound.prototype = {
 
   },
 
+  rrate: function(range) {
+
+    return this.rate(this.current.rate + (-1 + Math.random() * 2) * range);
+
+  },
+
   rate: function(rate) {
 
     rate *= this.alias.rate;
@@ -592,6 +624,22 @@ SoundOnDemand.Sound.prototype = {
 
   },
 
+  rateTo: function(target, duration) {
+
+    if (!this.playing && this.ready) this.resume();
+
+    duration = duration || 1.0;
+
+    this.rateTime = 0;
+    this.rateTarget = target;
+    this.rateDuration = duration;
+
+    this.rateSpeed = Math.abs(target - this.current.rate) / duration;
+
+    return this;
+
+  },
+
   onended: function() {
 
     if (!this.current.loop) this.stop();
@@ -599,6 +647,14 @@ SoundOnDemand.Sound.prototype = {
   },
 
   step: function(delta) {
+
+    if (this.delayTimeout > 0) {
+
+      this.delayTimeout -= delta;
+
+      return;
+
+    }
 
     if (!this.ready) {
 
@@ -616,9 +672,9 @@ SoundOnDemand.Sound.prototype = {
 
       this.currentTime = 0;
 
-    }
+      this.currentTime += this.bufferSource.playbackRate.value * delta;
 
-    this.currentTime += this.bufferSource.playbackRate.value * delta;
+    }
 
     if (this.fadeTarget !== this.fadeMod) {
 
@@ -632,6 +688,11 @@ SoundOnDemand.Sound.prototype = {
 
     }
 
+    if (this.rateTarget !== this.current.rate) {
+
+      this.rate(SoundOnDemand.moveTo(this.current.rate, this.rateTarget, delta * this.rateSpeed));
+
+    }
 
   },
 
@@ -647,10 +708,25 @@ SoundOnDemand.Sound.prototype = {
 
   stop: function() {
 
+    if (!this.playing) return;
+
     this.channel.remove(this);
 
     this.bufferSource.stop(0);
 
+    this.playing = false;
+
+  },
+
+  play: function() {
+
+    if (this.playing) return;
+
+    this.createNodes();
+
+    this.channel.add(this);
+
+    this.ready = false;
     this.playing = false;
 
   },
@@ -676,13 +752,14 @@ SoundOnDemand.Sound.prototype = {
 
   fadeTo: function(target, duration) {
 
-    if (!this.playing) this.resume();
+    if (!this.playing && this.ready) this.resume();
 
     duration = duration || 1.0;
 
     this.fadeTime = 0;
     this.fadeTarget = target;
     this.fadeDuration = duration;
+
     this.fadeSpeed = Math.abs(target - this.fadeMod) / duration;
 
     return this;
@@ -691,8 +768,9 @@ SoundOnDemand.Sound.prototype = {
 
   fadeIn: function(duration) {
 
-    if (!this.playing) this.resume();
+    if (!this.playing && this.ready) this.resume();
 
+    this.fadeMod = 0;
     this.fadeTo(1.0, duration);
 
     return this;
@@ -701,12 +779,10 @@ SoundOnDemand.Sound.prototype = {
 
   fadeOut: function(duration) {
 
-    this.fadeTo(0, duration);
+    this.fadeTo(0, duration || 1.0);
 
     return this;
 
-  },
-
-
+  }
 
 };
