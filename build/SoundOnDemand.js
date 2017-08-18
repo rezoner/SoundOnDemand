@@ -7,7 +7,6 @@
   This library may be freely distributed under the MIT license.
 
 */
-
 /* options */
 
 /* output: output node, default */
@@ -229,8 +228,7 @@ SoundOnDemand.prototype = {
 
   }
 
-};
-SoundOnDemand.Events = function() {
+};SoundOnDemand.Events = function() {
 
   this.listeners = {};
 
@@ -304,8 +302,7 @@ SoundOnDemand.Events.prototype = {
 
   }
 
-};
-SoundOnDemand.Channel = function(engine) {
+};SoundOnDemand.Channel = function(engine) {
 
   this.engine = engine;
   this.audioContext = engine.audioContext;
@@ -362,6 +359,8 @@ SoundOnDemand.Channel.prototype = {
 
     sound._remove = false;
 
+    if (this.queue.indexOf(sound) > -1) return;
+
     this.queue.push(sound);
 
   },
@@ -374,9 +373,15 @@ SoundOnDemand.Channel.prototype = {
 
       var sound = this.queue[i];
 
-      sound.step(delta);
+      if (sound._remove) {
+      
+        this.queue.splice(i--, 1);
+      
+        continue;
 
-      if (sound._remove) this.queue.splice(i--, 1);
+      }
+
+      sound.step(delta);
 
     }
 
@@ -490,12 +495,12 @@ SoundOnDemand.Channel.prototype = {
 
   }
 
-};
-SoundOnDemand.Sound = function(key, channel) {
+};SoundOnDemand.Sound = function(key, channel) {
 
   this.key = key;
   this.bufferKey = key;
   this.delayTimeout = 0;
+  this.paused = false;
 
   if (channel.engine.aliases[key]) {
 
@@ -597,10 +602,13 @@ SoundOnDemand.Sound.prototype = {
 
   },
 
-  loop: function() {
+  loop: function(start = 0, end = 0) {
 
     this.bufferSource.loop = true;
     this.current.loop = true;
+
+    this.bufferSource.loopStart = start;
+    if (end) this.bufferSource.loopEnd = end;
 
     return this;
 
@@ -609,6 +617,18 @@ SoundOnDemand.Sound.prototype = {
   rrate: function(range) {
 
     return this.rate(this.current.rate + (-1 + Math.random() * 2) * range);
+
+  },
+
+  nrate: function(range) {
+
+    return this.rate(this.current.rate - Math.random() * range);
+
+  },
+
+  prate: function(range) {
+
+    return this.rate(this.current.rate + Math.random() * range);
 
   },
 
@@ -648,9 +668,25 @@ SoundOnDemand.Sound.prototype = {
 
   step: function(delta) {
 
+    let updateVolume = false;
+
     if (this.delayTimeout > 0) {
 
       this.delayTimeout -= delta;
+
+      return;
+
+    }
+
+    if (this.fadeTarget !== this.fadeMod) {
+
+      updateVolume = true;
+
+      this.fadeMod = SoundOnDemand.moveTo(this.fadeMod, this.fadeTarget, delta * this.fadeSpeed);
+
+    } else if (this.fadeTarget === 0) {
+
+      this.pause();
 
       return;
 
@@ -676,17 +712,7 @@ SoundOnDemand.Sound.prototype = {
 
     }
 
-    if (this.fadeTarget !== this.fadeMod) {
-
-      this.fadeMod = SoundOnDemand.moveTo(this.fadeMod, this.fadeTarget, delta * this.fadeSpeed);
-
-      this.updateVolume();
-
-    } else if (this.fadeTarget === 0) {
-
-      this.pause();
-
-    }
+    if (updateVolume) this.updateVolume();
 
     if (this.rateTarget !== this.current.rate) {
 
@@ -700,7 +726,7 @@ SoundOnDemand.Sound.prototype = {
 
     this.channel.remove(this);
 
-    this.bufferSource.stop(0);
+    if (this.playing) this.bufferSource.stop(0);
 
     this.playing = false;
 
@@ -708,9 +734,9 @@ SoundOnDemand.Sound.prototype = {
 
   stop: function() {
 
-    if (!this.playing) return;
-
     this.channel.remove(this);
+
+    if (!this.playing) return;
 
     this.bufferSource.stop(0);
 

@@ -55,6 +55,8 @@ SoundOnDemand.Channel.prototype = {
 
     sound._remove = false;
 
+    if (this.queue.indexOf(sound) > -1) return;
+
     this.queue.push(sound);
 
   },
@@ -67,9 +69,15 @@ SoundOnDemand.Channel.prototype = {
 
       var sound = this.queue[i];
 
-      sound.step(delta);
+      if (sound._remove) {
+      
+        this.queue.splice(i--, 1);
+      
+        continue;
 
-      if (sound._remove) this.queue.splice(i--, 1);
+      }
+
+      sound.step(delta);
 
     }
 
